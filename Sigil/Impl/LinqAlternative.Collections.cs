@@ -336,6 +336,11 @@ namespace Sigil.Impl
         {
             Inner.CopyTo(arr);
         }
+
+        public void Clear()
+        {
+            Inner.Clear();
+        }
     }
 
     internal class LinqStack<T> : LinqRoot<T>

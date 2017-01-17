@@ -71,6 +71,7 @@ namespace Sigil.Impl
         private LinqList<BufferedILInstruction> TraversableBuffer = new LinqList<BufferedILInstruction>();
         internal LinqList<Operation<DelegateType>> Operations = new LinqList<Operation<DelegateType>>();
         private LinqList<SigilFunc<int>> InstructionSizes = new LinqList<SigilFunc<int>>();
+        private LinqList<int> InstructionOffsets = new LinqList<int>();
 
         public BufferedILGenerator()
         {
@@ -91,35 +92,10 @@ namespace Sigil.Impl
             return log.ToString();
         }
 
-        private Dictionary<int, int> LengthCache = new Dictionary<int, int>();
-
         private int LengthTo(int end)
         {
-            if (end == 0)
-            {
-                return 0;
-            }
-
-            int cached;
-            if (LengthCache.TryGetValue(end, out cached))
-            {
-                return cached;
-            }
-
-            int runningTotal = 0;
-
-            for (var i = 0; i < end; i++)
-            {
-                var s = InstructionSizes[i];
-
-                runningTotal += s();
-
-                LengthCache[i + 1] = runningTotal;
-            }
-
-            cached = LengthCache[end];
-
-            return cached;
+            BuildOffsets();
+            return end > 0 ? InstructionOffsets[end - 1] : 0;    
         }
 
         internal string[] Instructions(LinqList<Local> locals)
@@ -222,15 +198,42 @@ namespace Sigil.Impl
                 throw new ArgumentOutOfRangeException("ix", "Expected value between 0 and " + Buffer.Count);
             }
 
-            LengthCache.Clear();
-
             InstructionSizes.RemoveAt(ix);
+
+            RecomputeOffsets(ix);
 
             Buffer.RemoveAt(ix);
 
             TraversableBuffer.RemoveAt(ix);
 
             Operations.RemoveAt(ix);
+        }
+
+        private void ResetOffsets()
+        {
+            InstructionOffsets.Clear();
+        }
+
+        private void BuildOffsets()
+        {
+            RecomputeOffsets(InstructionOffsets.Count - 1);
+        }
+
+        private void RecomputeOffsets(int ix)
+        {
+            while (InstructionOffsets.Count > ix && InstructionOffsets.Count > 0)
+            {
+                InstructionOffsets.RemoveAt(InstructionOffsets.Count - 1);
+            }
+
+            ix = InstructionOffsets.Count;
+
+            var running = ix > 0 ? InstructionOffsets[ix - 1] : 0;
+            for (var i = ix; i < InstructionSizes.Count; ++i)
+            {
+                running += InstructionSizes[i]();
+                InstructionOffsets.Add(running);
+            }
         }
 
         public void Insert(int ix, OpCode op)
@@ -240,9 +243,9 @@ namespace Sigil.Impl
                 throw new ArgumentOutOfRangeException("ix", "Expected value between 0 and " + Buffer.Count);
             }
 
-            LengthCache.Clear();
-
             InstructionSizes.Insert(ix, () => InstructionSize.Get(op));
+
+            RecomputeOffsets(ix);
 
             Buffer.Insert(
                 ix, 
@@ -279,7 +282,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -309,7 +312,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -339,7 +342,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -369,7 +372,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -405,7 +408,7 @@ namespace Sigil.Impl
 
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -428,7 +431,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -457,7 +460,7 @@ namespace Sigil.Impl
 
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -480,7 +483,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -503,7 +506,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -525,7 +528,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -563,7 +566,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -599,7 +602,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -622,7 +625,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -645,7 +648,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -668,7 +671,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -694,14 +697,14 @@ namespace Sigil.Impl
             update =
                 newOpcode =>
                 {
-                    LengthCache.Clear();
+                    ResetOffsets();
 
                     localOp = newOpcode;
                 };
 
             InstructionSizes.Add(() => InstructionSize.Get(localOp));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -728,14 +731,14 @@ namespace Sigil.Impl
             update =
                 newOpcode =>
                 {
-                    LengthCache.Clear();
+                    ResetOffsets();
 
                     localOp = newOpcode;
                 };
 
             InstructionSizes.Add(() => InstructionSize.Get(localOp, labels));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -776,7 +779,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -800,7 +803,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -826,7 +829,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(op));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -869,7 +872,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.Get(OpCodes.Calli));
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -918,7 +921,7 @@ namespace Sigil.Impl
 
             InstructionSizes.Add(() => InstructionSize.BeginExceptionBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -943,7 +946,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.BeginCatchBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -966,7 +969,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.EndExceptionBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -989,7 +992,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.EndCatchBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -1007,7 +1010,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.BeginFinallyBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -1030,7 +1033,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.EndFinallyBlock());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -1067,7 +1070,7 @@ namespace Sigil.Impl
 
             InstructionSizes.Add(() => InstructionSize.DefineLabel());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) => 
@@ -1090,7 +1093,7 @@ namespace Sigil.Impl
         {
             InstructionSizes.Add(() => InstructionSize.MarkLabel());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly, log) =>
@@ -1134,7 +1137,7 @@ namespace Sigil.Impl
 
             InstructionSizes.Add(() => InstructionSize.DeclareLocal());
 
-            LengthCache.Clear();
+            BuildOffsets();
 
             Buffer.Add(
                 (il, logOnly,log) => 
